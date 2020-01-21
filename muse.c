@@ -152,12 +152,14 @@ void editorDrawRows(struct abuf *ab) {
 void editorRefreshScreen() {
     struct abuf ab = ABUF_INIT;
 
+    abAppend(&ab, "\x1b[?25l", 6); // Hide the cursor
     abAppend(&ab, "\x1b[2J", 4); // Writes an escape sequence to the terminal
     abAppend(&ab, "\x1b[H", 3); // Reposition the cursor
     
     editorDrawRows(&ab);
 
     abAppend(&ab, "\x1b[H", 3);
+    abAppend(&ab, "\x1b[?25h", 6); // Display the cusor
 
     write(STDOUT_FILENO, ab.b, ab.len);
     abFree(&ab);
