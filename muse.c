@@ -232,7 +232,7 @@ void editorUpdateRow(erow *row) {
     row->rsize = idx;
 }
 
-// APpend text to row
+// Append text to row
 void editorAppendRow(char *s, size_t len) {
     // Reallocate memory to row
     E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
@@ -249,6 +249,27 @@ void editorAppendRow(char *s, size_t len) {
 
     E.numrows++;
 }
+
+// Insert char inside of the row
+void EditorRowInsertChar(erow *row, int at, int c) {
+    if (at < 0 || at > row->size) at = row->size;
+    row->chars = realloc(row->chars, row->size + 2);
+    memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
+    row->size++;
+    row->chars[at] = c;
+    editorUpdateRow(row);
+}
+
+/*** editor operations ***/
+
+// Insert char
+ void editorInsertChar(int c) {
+     if (E.cy == E.numrows) {
+         editorAppendRow("", 0);
+     }
+     EditorRowInsertChar(&E.row[E.cy], E.cx, c);
+     E.cx++;
+ }
 
 /*** file i/o ***/
 
@@ -422,6 +443,7 @@ void editorRefreshScreen() {
     abFree(&ab);
 }
 
+// Set the status bar message
 void editorSetStatusMessage(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
@@ -512,6 +534,10 @@ void editorProcessKeypress() {
         case ARROW_LEFT:
         case ARROW_RIGHT:
             editorMoveCursor(c);
+            break;
+        
+        default:
+            editorInsertChar(c);
             break;
     }
 }
