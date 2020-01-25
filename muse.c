@@ -42,6 +42,7 @@ typedef struct erow {
 
 struct editorConfig {
     int cx, cy; // Cursor x and y position in characters
+    int rx; // Index of the render field
     int rowoff;  // Offset of row displayed
     int coloff; // Offset of col displayed
     int screenrows; // Number of rows that we can show
@@ -189,6 +190,20 @@ int getWindowSize(int *rows, int*cols) {
 
 /*** row operations ***/
 
+// Convert CX to RX
+int editorRowCxToRx(erow *row, int cx) {
+    int rx = 0;
+    int j;
+    for (j = 0; j < cx; j++) {
+        if (row->chars[j] == '\t')
+            rx += (MUSE_TAB_STOP - 1) - (rx % MUSE_TAB_STOP);
+        rx++;
+    }
+
+    return rx;
+}
+
+// Update the row
 void editorUpdateRow(erow *row) {
     int tabs = 0;
     int j;
@@ -212,7 +227,9 @@ void editorUpdateRow(erow *row) {
     row->rsize = idx;
 }
 
+// APpend text to row
 void editorAppendRow(char *s, size_t len) {
+    // Reallocate memory to row
     E.row = realloc(E.row, sizeof(erow) * (E.numrows + 1));
     
     int at = E.numrows;
@@ -230,6 +247,7 @@ void editorAppendRow(char *s, size_t len) {
 
 /*** file i/o ***/
 
+// Open file
 void editorOpen(char *filename) {
     FILE *fp = fopen(filename, "r");
     if (!fp) die("fopen");
@@ -272,7 +290,13 @@ void abFree(struct abuf *ab) {
 
 /*** output ***/
 
+// Scroll the edtior
 void editorScroll() {
+    E.rx = 0;
+    if (E.cy < E.numrows) {
+        E.rx = editorRowCxToRx(&E.row[E.cy], E.cx);
+    }
+
     // Vertical
     if (E.cy < E.rowoff) {
         E.rowoff = E.cy;
@@ -282,11 +306,11 @@ void editorScroll() {
     }
 
     // Horizontal
-    if (E.cx < E.coloff) {
-        E.coloff = E.cx;
+    if (E.rx < E.coloff) {
+        E.coloff = E.rx;
     }
-    if (E.cx >= E.coloff + E.screencols) {
-        E.coloff = E.cx - E.screencols + 1;
+    if (E.rx >= E.coloff + E.screencols) {
+        E.coloff = E.rx - E.screencols + 1;
     }
 
 }
@@ -344,7 +368,7 @@ void editorRefreshScreen() {
     // Move the cursor to the position stored in E.cx and E.cy
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, 
-                                              (E.cx - E.coloff) + 1);
+                                              (E.rx - E.coloff) + 1);
     abAppend(&ab, buf, strlen(buf));
 
     abAppend(&ab, "\x1b[?25h", 6); // Display the cusor
@@ -416,6 +440,13 @@ void editorProcessKeypress() {
         case PAGE_UP:
         case PAGE_DOWN:
             {
+                if (c == PAGE_UP) {
+                    E.cy = E.rowoff;
+                } else if (c == PAGE_DOWN) {
+                    E.cy = E.rowoff + E.screenrows - 1;
+                    if (E.cy > E.numrows) E.cy = E.numrows;
+                }
+                
                 int times = E.screenrows;
                 while (times--)
                     editorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
@@ -436,6 +467,7 @@ void editorProcessKeypress() {
 void initEditor() {
     E.cx = 0; // Horizontal coordinate of the cursor (the column)
     E.cy = 0; // Vertical coordinate of the cursor (the row)
+    E.rx = 0;
     E.rowoff = 0;
     E.coloff = 0;
     E.numrows = 0;
