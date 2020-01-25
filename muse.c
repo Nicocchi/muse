@@ -40,6 +40,7 @@ typedef struct erow {
 struct editorConfig {
     int cx, cy; // Cursor x and y position in characters
     int rowoff;  // Offset of row displayed
+    int coloff; // Offset of col displayed
     int screenrows; // Number of rows that we can show
     int screencols; // Number of cols that we can show
     int numrows; // Number of rows
@@ -241,12 +242,22 @@ void abFree(struct abuf *ab) {
 /*** output ***/
 
 void editorScroll() {
+    // Vertical
     if (E.cy < E.rowoff) {
         E.rowoff = E.cy;
     }
     if (E.cy >= E.rowoff + E.screenrows) {
         E.rowoff = E.cy - E.screenrows + 1;
     }
+
+    // Horizontal
+    if (E.cx < E.coloff) {
+        E.coloff = E.cx;
+    }
+    if (E.cx >= E.coloff + E.screencols) {
+        E.coloff = E.cx - E.screencols + 1;
+    }
+
 }
 
 // Draw each row of the buffer of text being edited
@@ -275,9 +286,10 @@ void editorDrawRows(struct abuf *ab) {
                 abAppend(ab, "~", 1);
             }
         } else {
-            int len = E.row[filerow].size;
+            int len = E.row[filerow].size - E.coloff;
+            if (len < 0) len = 0;
             if (len > E.screencols) len = E.screencols;
-            abAppend(ab, E.row[filerow].chars, len);
+            abAppend(ab, &E.row[filerow].chars[E.coloff], len);
         }
 
         abAppend(ab, "\x1b[K", 3);
@@ -300,7 +312,8 @@ void editorRefreshScreen() {
 
     // Move the cursor to the position stored in E.cx and E.cy
     char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, E.cx + 1);
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, 
+                                              (E.cx - E.coloff) + 1);
     abAppend(&ab, buf, strlen(buf));
 
     abAppend(&ab, "\x1b[?25h", 6); // Display the cusor
@@ -320,9 +333,7 @@ void editorMoveCursor(int key) {
             }
             break;
         case ARROW_RIGHT:
-            if (E.cx != E.screencols - 1) {
-                E.cx++;
-            }
+            E.cx++;
             break;
         case ARROW_UP:
             if (E.cy != 0) {
@@ -379,6 +390,7 @@ void initEditor() {
     E.cx = 0; // Horizontal coordinate of the cursor (the column)
     E.cy = 0; // Vertical coordinate of the cursor (the row)
     E.rowoff = 0;
+    E.coloff = 0;
     E.numrows = 0;
     E.row = NULL;
 
