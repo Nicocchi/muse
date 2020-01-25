@@ -5,10 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 
 /*** defines ***/
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
 
 #define MUSE_VERSION "0.0.1"
 
@@ -28,10 +32,17 @@ enum editorKey {
 
 /*** data ***/
 
+typedef struct erow {
+    int size; // Size of the row, excluding the null term
+    char *chars; // Row content
+} erow;
+
 struct editorConfig {
-    int cx, cy;
-    int screenrows;
-    int screencols;
+    int cx, cy; // Cursor x and y position in characters
+    int screenrows; // Number of rows that we can show
+    int screencols; // Number of cols that we can show
+    int numrows; // Number of rows
+    erow row; // Rows
     struct termios orig_termios;
 };
 
@@ -171,6 +182,30 @@ int getWindowSize(int *rows, int*cols) {
     }
 }
 
+/*** file i/o ***/
+
+void editorOpen(char *filename) {
+    FILE *fp = fopen(filename, "r");
+    if (!fp) die("fopen");
+
+    char *line = NULL;
+    size_t linecap = 0;
+    ssize_t linelen;
+    linelen = getline(&line, &linecap, fp);
+    if (linelen != -1) {
+        while (linelen > 0 && (line[linelen - 1] == '\n' || line[linelen - 1] == '\r'))
+            linelen--;
+        
+        E.row.size = linelen;
+        E.row.chars = malloc(linelen + 1);
+        memcpy(E.row.chars, line, linelen);
+        E.row.chars[linelen] = '\0';
+        E.numrows = 1;
+    }
+    free(line);
+    fclose(fp);
+}
+
 /*** append buffer ***/
 
 struct abuf {
@@ -200,24 +235,29 @@ void editorDrawRows(struct abuf *ab) {
     int y;
 
     for (y = 0; y < E.screenrows; y++) {
-        // Write welcome message or ~
-        if (y == E.screenrows / 3) {
-            char welcome[80];
-            int welcomelen = snprintf(welcome, sizeof(welcome),
-                    "Muse editor -- version %s", MUSE_VERSION);
-            if (welcomelen > E.screencols) welcomelen = E.screencols;
-            
-            // Center the welcome message
-            int padding = (E.screencols - welcomelen) / 2;
-            if (padding) {
+        if (y >= E.numrows) {
+            // Write welcome message or ~
+            if (E.numrows == 0 && y == E.screenrows / 3) {
+                char welcome[80];
+                int welcomelen = snprintf(welcome, sizeof(welcome),
+                        "Muse editor -- version %s", MUSE_VERSION);
+                if (welcomelen > E.screencols) welcomelen = E.screencols;
+                
+                // Center the welcome message
+                int padding = (E.screencols - welcomelen) / 2;
+                if (padding) {
+                    abAppend(ab, "~", 1);
+                    padding--;
+                }
+                while (padding--) abAppend(ab, " ", 1);
+                abAppend(ab, welcome, welcomelen);
+            } else {
                 abAppend(ab, "~", 1);
-                padding--;
             }
-            while (padding--) abAppend(ab, " ", 1);
-            abAppend(ab, welcome, welcomelen);
-        } 
-        else {
-            abAppend(ab, "~", 1);
+        } else {
+            int len = E.row.size;
+            if (len > E.screencols) len = E.screencols;
+            abAppend(ab, E.row.chars, len);
         }
 
         abAppend(ab, "\x1b[K", 3);
@@ -316,13 +356,17 @@ void editorProcessKeypress() {
 void initEditor() {
     E.cx = 0; // Horizontal coordinate of the cursor (the column)
     E.cy = 0; // Vertical coordinate of the cursor (the row)
+    E.numrows = 0;
 
     if (getWindowSize(&E.screenrows, &E.screencols) == -1) die("getWindowSize");
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     enableRawMode();
     initEditor();
+    if (argc >= 2) {
+        editorOpen(argv[1]);
+    }
 
     while (1) {
         editorRefreshScreen();
