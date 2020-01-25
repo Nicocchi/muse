@@ -260,7 +260,7 @@ void editorAppendRow(char *s, size_t len) {
 }
 
 // Insert char inside of the row
-void EditorRowInsertChar(erow *row, int at, int c) {
+void editorRowInsertChar(erow *row, int at, int c) {
     if (at < 0 || at > row->size) at = row->size;
     row->chars = realloc(row->chars, row->size + 2);
     memmove(&row->chars[at + 1], &row->chars[at], row->size - at + 1);
@@ -270,16 +270,36 @@ void EditorRowInsertChar(erow *row, int at, int c) {
     E.dirty++;
 }
 
+// Delete char inside of the row
+void editorRowDelChar(erow *row, int at) {
+    if (at < 0 || at >= row->size) return;
+    memmove(&row->chars[at], &row->chars[at + 1], row->size - at);
+    row->size--;
+    editorUpdateRow(row);
+    E.dirty++;
+}
+
 /*** editor operations ***/
 
 // Insert char
- void editorInsertChar(int c) {
+void editorInsertChar(int c) {
      if (E.cy == E.numrows) {
          editorAppendRow("", 0);
      }
-     EditorRowInsertChar(&E.row[E.cy], E.cx, c);
+     editorRowInsertChar(&E.row[E.cy], E.cx, c);
      E.cx++;
  }
+
+// Delete char
+void editorDelChar() {
+    if (E.cy == E.numrows) return;
+
+    erow *row = &E.row[E.cy];
+    if (E.cx > 0) {
+        editorRowDelChar(row, E.cx - 1);
+        E.cx--;
+    }
+}
 
 /*** file i/o ***/
 
@@ -301,6 +321,7 @@ char *editorRowsToString(int *buflen) {
 
     return buf;
 }
+
 
 // Open file
 void editorOpen(char *filename) {
@@ -589,7 +610,8 @@ void editorProcessKeypress() {
         case BACKSPACE:
         case CTRL_KEY('h'):
         case DEL_KEY:
-            /* TODO */
+            if (c == DEL_KEY) editorMoveCursor(ARROW_RIGHT);
+            editorDelChar();
             break;
 
         case PAGE_UP:
