@@ -19,7 +19,7 @@
 
 #define MUSE_VERSION "0.0.1"
 #define MUSE_TAB_STOP 8
-#define MUSE_QUIT_TIMES 3
+#define MUSE_QUIT_TIMES 1
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 
@@ -641,6 +641,7 @@ char *editorRowsToString(int *buflen) {
 
 // Open file
 void editorOpen(char *filename) {
+
     // Free the filename from struct and reset it to 
     // new one
     free(E.filename);

@@ -43,6 +43,10 @@ C and CPP
 Python
 ```
 
+### Troubleshooting
+
+Noticed some issues on some Linux distro's where `strdup` will cause segmentation faults. One solution is to use `-std=gnu99` to use the GNU compiler for C.
+
 ### Requirements
 
 C Compiler: [GCC](https://gcc.gnu.org) (Recommended) or [MingGW](http://www.mingw.org) for Windows
