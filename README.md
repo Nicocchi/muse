@@ -41,6 +41,7 @@ Languages currently supported for syntax highlighting
 ```
 C and CPP
 Python
+JavaScript
 ```
 
 ### Troubleshooting

@@ -115,6 +115,19 @@ char *PY_HL_keywords[] = {
     "dict|", "list|", "set|", "frozenset|", "tuple|", NULL
 };
 
+char *JS_HL_extensions[] = { ".js", NULL };
+char *JS_HL_keywords[] = {
+    "abstract", "arguments", "await*", "boolean", "break", "byte", "case", "catch",
+    "char", "class*", "const", "continue", "debugger", "default", "delete", "do",
+    "double", "else", "enum*", "eval", "export*", "extends*", "false", "final"
+    "finally", "float", "for", "function", "goto", "if", "implements", "import*"
+    "in", "instanceof", "int", "interface", "let*", "long", "native", "new", "null",
+    "package", "private", "protected", "public", "return", "short", "static", "super*",
+    "switch", "synchronized", "this", "throw", "throws", "transient", "true", "try",
+    "typeof", "var", "void", "volatile", "while", "with", "yield", NULL
+};
+
+
 struct editorSyntax HLDB[] = {
     {
         "c",
@@ -129,6 +142,13 @@ struct editorSyntax HLDB[] = {
         PY_HL_keywords,
         "#", "\"\"\"", "\"\"\"",
         HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
+    },
+    {
+       "js",
+       JS_HL_extensions,
+       JS_HL_keywords,
+       "//", "/*", "*/",
+       HL_HIGHLIGHT_NUMBERS | HL_HIGHLIGHT_STRINGS
     },
 };
 
